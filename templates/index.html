@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>投资顾问考试题目分析工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #DAEBE3 0%, #c5e0d8 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header {
+            text-align: center;
+            color: white;
+            padding: 40px 0;
+        }
+        .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+        .header p { font-size: 1.1em; opacity: 0.9; }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .upload-area:hover { border-color: #99CDD8; background: #e6f7f7; }
+        .upload-icon { font-size: 48px; margin-bottom: 15px; }
+        .upload-text { font-size: 1.2em; color: #333; margin-bottom: 10px; }
+        .upload-hint { color: #999; font-size: 0.9em; }
+        input[type="file"] { display: none; }
+        .btn {
+            background: #99CDD8;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: inline-block;
+            margin-top: 15px;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(10, 186, 181, 0.4);
+        }
+        .btn:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        .loading { text-align: center; padding: 40px; }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #99CDD8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .results { display: none; }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .stat-card {
+            background: #99CDD8;
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        .stat-value { font-size: 2em; font-weight: bold; margin-bottom: 5px; }
+        .stat-label { font-size: 0.9em; opacity: 0.9; }
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin: 30px 0 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #99CDD8;
+        }
+        .section-title:first-child { margin-top: 0; }
+        .knowledge-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .knowledge-tag {
+            background: #99CDD8;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .knowledge-tag:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(10, 186, 181, 0.3); }
+        .knowledge-tag .count {
+            background: rgba(255,255,255,0.3);
+            padding: 2px 10px;
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        .knowledge-group {
+            margin-bottom: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .group-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .group-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #99CDD8;
+        }
+        .group-count {
+            background: #99CDD8;
+            color: white;
+            padding: 3px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+        }
+        .group-toggle {
+            margin-left: auto;
+            font-size: 1.2em;
+            color: #99CDD8;
+        }
+        .question-card {
+            background: white;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 12px;
+            border-left: 4px solid #99CDD8;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .question-number {
+            font-weight: bold;
+            color: #99CDD8;
+            font-size: 0.95em;
+        }
+        .question-tags {
+            display: flex;
+            gap: 5px;
+        }
+        .tag {
+            background: #e6f7f7;
+            color: #99CDD8;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 0.75em;
+        }
+        .question-stem {
+            font-size: 1.05em;
+            color: #333;
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .options { margin-bottom: 12px; }
+        .option {
+            padding: 10px 15px;
+            margin-bottom: 6px;
+            border-radius: 8px;
+            font-size: 0.95em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .option.correct {
+            background: #d4edda;
+            color: #155724;
+            font-weight: bold;
+            border: 2px solid #28a745;
+        }
+        .option.incorrect {
+            background: #f8f9fa;
+            color: #666;
+        }
+        .option-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.1);
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        .option.correct .option-label {
+            background: #28a745;
+            color: white;
+        }
+        .memory-box {
+            background: #fff9e6;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 12px;
+            border: 1px solid #ffe082;
+        }
+        .memory-title {
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 1em;
+        }
+        .memory-content {
+            color: #856404;
+            font-size: 0.95em;
+            line-height: 1.7;
+        }
+        .memory-item {
+            margin-bottom: 8px;
+            padding-left: 10px;
+            border-left: 3px solid #ffc107;
+        }
+        .cheat-sheet {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            padding: 20px;
+        }
+        .cheat-sheet h4 {
+            font-size: 1.1em;
+            margin-bottom: 12px;
+        }
+        .cheat-sheet ul {
+            list-style: none;
+            font-size: 0.95em;
+            line-height: 2;
+        }
+        .cheat-sheet li::before {
+            content: "▸ ";
+            font-weight: bold;
+        }
+        .stats-text {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: #333;
+        }
+        .hidden { display: none; }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        .nav-tab {
+            padding: 10px 20px;
+            border: none;
+            background: none;
+            color: #666;
+            cursor: pointer;
+            font-size: 1em;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+        .nav-tab:hover { background: #e6f7f7; color: #99CDD8; }
+        .nav-tab.active { background: #99CDD8; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 投资顾问考试题目分析</h1>
+            <p>上传PDF/Word文件，自动生成知识点统计和记忆口诀</p>
+        </div>
+
+        <div class="card">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">点击或拖拽上传文件</div>
+                <div class="upload-hint">支持同时上传多个 PDF、Word 文件</div>
+                <input type="file" id="fileInput" accept=".pdf,.docx" multiple>
+            </div>
+
+            <div id="fileInfo" style="display:none; margin-top:15px; text-align:center;">
+                <div id="fileList" style="margin-bottom:15px; text-align:left; max-height:150px; overflow-y:auto;"></div>
+                <button class="btn" id="analyzeBtn" onclick="analyzeFiles()">开始分析</button>
+            </div>
+
+            <div id="loading" class="loading" style="display:none;">
+                <div class="spinner"></div>
+                <p>正在分析题目，请稍候...</p>
+            </div>
+
+            <div id="error" class="error-message" style="display:none;"></div>
+        </div>
+
+        <div id="results" class="results">
+            <!-- 统计概览 -->
+            <div class="card">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalQuestions">0</div>
+                        <div class="stat-label">识别题目数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="knowledgeCount">0</div>
+                        <div class="stat-label">核心知识点</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="fileCount">0</div>
+                        <div class="stat-label">分析文件数</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导航标签 -->
+            <div class="card">
+                <div class="nav-tabs">
+                    <button class="nav-tab active" onclick="showTab('priority')">📊 知识点优先级</button>
+                    <button class="nav-tab" onclick="showTab('stats')">📈 统计秘籍</button>
+                    <button class="nav-tab" onclick="showTab('cheat')">🎯 蒙题技巧</button>
+                    <button class="nav-tab" onclick="showTab('questions')">📝 题目列表</button>
+                </div>
+
+                <!-- 知识点优先级 -->
+                <div id="priority-tab" class="tab-content active">
+                    <h3 class="section-title">高频知识点（按出现概率排序）</h3>
+                    <div class="knowledge-list" id="knowledgeList"></div>
+
+                    <h3 class="section-title">知识点梯队划分</h3>
+                    <div id="knowledgeTiers"></div>
+                </div>
+
+                <!-- 统计秘籍 -->
+                <div id="stats-tab" class="tab-content">
+                    <h3 class="section-title">考前统计秘籍</h3>
+                    <div class="stats-text" id="statsContent"></div>
+                </div>
+
+                <!-- 蒙题技巧 -->
+                <div id="cheat-tab" class="tab-content">
+                    <h3 class="section-title">考前速查表</h3>
+                    <div class="cheat-sheet">
+                        <h4>🔥 法规年限速记</h4>
+                        <ul>
+                            <li>个人从业资格处罚 → 5年禁入</li>
+                            <li>刑事犯罪/严重欺诈 → 10年禁入</li>
+                            <li>情节特别严重 → 终身禁入</li>
+                            <li>一般违规记录 → 3年观察期</li>
+                        </ul>
+                    </div>
+                    <br>
+                    <div class="cheat-sheet" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                        <h4>🎲 终极蒙题技巧</h4>
+                        <ul>
+                            <li>绝对化选项（一定/必须/永远）→ 大概率错</li>
+                            <li>两个选项意思相反 → 答案在其中</li>
+                            <li>数字题看尾数0/5 → 优先验证</li>
+                            <li>多选题宁少勿多 → 不确定不选</li>
+                            <li>计算题 → 看题干数字，试试加减乘除</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- 题目列表 -->
+                <div id="questions-tab" class="tab-content">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                        <h3 class="section-title" style="margin:0; border:none;">题目详情</h3>
+                        <button class="btn" id="sortBtn" onclick="toggleSort()" style="margin:0; padding:10px 20px; font-size:0.9em;">
+                            🎯 重点排列
+                        </button>
+                    </div>
+                    <div id="questionsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentData = null;
+        let selectedFiles = [];
+        let isPrioritySort = false; // 默认原题号顺序
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files).filter(f =>
+                f.name.endsWith('.pdf') || f.name.endsWith('.docx')
+            );
+            if (files.length) {
+                selectedFiles = files;
+                showFileList(files);
+            }
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length) {
+                selectedFiles = Array.from(fileInput.files);
+                showFileList(selectedFiles);
+            }
+        });
+
+        function showFileList(files) {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = files.map(f => `
+                <div style="padding:8px; background:#f0f7ff; margin-bottom:5px; border-radius:8px; display:flex; align-items:center; gap:10px;">
+                    <span>📄</span>
+                    <span style="flex:1;">${f.name}</span>
+                    <span style="color:#666; font-size:0.85em;">${(f.size/1024).toFixed(1)} KB</span>
+                </div>
+            `).join('');
+            document.getElementById('fileInfo').style.display = 'block';
+            document.getElementById('error').style.display = 'none';
+        }
+
+        async function analyzeFiles() {
+            if (selectedFiles.length === 0) return;
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('analyzeBtn').disabled = true;
+
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append('files', file));
+
+            try {
+                const response = await fetch('/api/analyze', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                currentData = data;
+                displayResults(data);
+            } catch (error) {
+                document.getElementById('error').textContent = '分析失败: ' + error.message;
+                document.getElementById('error').style.display = 'block';
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        function showTab(tabName, tabElement) {
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            if (tabElement) {
+                tabElement.classList.add('active');
+            } else if (event && event.target) {
+                event.target.classList.add('active');
+            } else {
+                // 根据 tabName 找到对应的 tab
+                const tabIndex = ['priority', 'stats', 'cheat', 'questions'].indexOf(tabName);
+                if (tabIndex >= 0) {
+                    document.querySelectorAll('.nav-tab')[tabIndex].classList.add('active');
+                }
+            }
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+
+        function displayResults(data) {
+            document.getElementById('totalQuestions').textContent = data.total_questions;
+            document.getElementById('knowledgeCount').textContent = data.knowledge_count;
+            document.getElementById('fileCount').textContent = data.file_count || 1;
+
+            // 知识点列表
+            const knowledgeList = document.getElementById('knowledgeList');
+            knowledgeList.innerHTML = data.knowledge_priority.slice(0, 15).map(k => `
+                <div class="knowledge-tag" onclick="filterByKnowledge('${k.name}')">
+                    ${k.name}
+                    <span class="count">${k.count}题 ${k.percentage}</span>
+                </div>
+            `).join('');
+
+            // 梯队划分
+            const tiers = { high: [], mid: [], low: [] };
+            data.knowledge_priority.forEach(k => {
+                const pct = parseFloat(k.percentage);
+                if (pct >= 10) tiers.high.push(k);
+                else if (pct >= 5) tiers.mid.push(k);
+                else tiers.low.push(k);
+            });
+
+            document.getElementById('knowledgeTiers').innerHTML = `
+                <div style="margin-bottom:15px; padding:15px; background:#d4edda; border-radius:10px;">
+                    <h4 style="color:#155724; margin-bottom:10px;">🥇 第一梯队（概率≥10%）- 必须掌握</h4>
+                    <p>${tiers.high.map(k => k.name).join('、') || '无'}</p>
+                </div>
+                <div style="margin-bottom:15px; padding:15px; background:#fff3cd; border-radius:10px;">
+                    <h4 style="color:#856404; margin-bottom:10px;">🥈 第二梯队（概率5-10%）- 尽量掌握</h4>
+                    <p>${tiers.mid.map(k => k.name).join('、') || '无'}</p>
+                </div>
+                <div style="padding:15px; background:#f8f9fa; border-radius:10px;">
+                    <h4 style="color:#666; margin-bottom:10px;">🥉 第三梯队（概率<5%）- 有印象即可</h4>
+                    <p>${tiers.low.map(k => k.name).join('、') || '无'}</p>
+                </div>
+            `;
+
+            // 统计秘籍
+            document.getElementById('statsContent').textContent = data.statistics;
+
+            // 默认按原题号顺序显示
+            isPrioritySort = false;
+            document.getElementById('sortBtn').textContent = '🎯 重点排列';
+            displayQuestions(currentData.questions, false);
+
+            document.getElementById('results').style.display = 'block';
+        }
+
+        function toggleSort() {
+            isPrioritySort = !isPrioritySort;
+            const btn = document.getElementById('sortBtn');
+
+            if (isPrioritySort) {
+                btn.textContent = '📝 原题顺序';
+                // 按知识点优先级排序（已在后端完成）
+                displayQuestions(currentData.questions, true);
+            } else {
+                btn.textContent = '🎯 重点排列';
+                // 按原题号排序
+                const sortedByNumber = [...currentData.questions].sort((a, b) => a.number - b.number);
+                displayQuestions(sortedByNumber, false);
+            }
+        }
+
+        function displayQuestions(questions, groupByKnowledge) {
+            const container = document.getElementById('questionsContainer');
+
+            if (groupByKnowledge) {
+                // 按知识点分组显示
+                const groups = {};
+                questions.forEach(q => {
+                    const tag = q.knowledge_tags[0] || '未分类';
+                    if (!groups[tag]) groups[tag] = [];
+                    groups[tag].push(q);
+                });
+
+                const sortedGroups = Object.entries(groups).sort((a, b) => b[1].length - a[1].length);
+
+                container.innerHTML = sortedGroups.map(([tag, qs], idx) => `
+                    <div class="knowledge-group">
+                        <div class="group-header" onclick="toggleGroup(${idx})">
+                            <span class="group-title">${tag}</span>
+                            <span class="group-count">${qs.length}题</span>
+                            <span class="group-toggle" id="toggle-${idx}">▼</span>
+                        </div>
+                        <div id="group-${idx}">
+                            ${qs.map((q, i) => renderQuestion(q, i + 1)).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                // 原题号顺序显示（不分组）
+                container.innerHTML = `
+                    <div class="knowledge-group">
+                        <div class="group-header" onclick="toggleGroup(0)">
+                            <span class="group-title">全部题目（按原题号排序）</span>
+                            <span class="group-count">${questions.length}题</span>
+                            <span class="group-toggle" id="toggle-0">▼</span>
+                        </div>
+                        <div id="group-0">
+                            ${questions.map((q, i) => renderQuestion(q, i + 1)).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+
+        function renderQuestion(q, index) {
+            const optionsHtml = Object.entries(q.options).map(([label, text]) => {
+                const isCorrect = label === q.answer || q.answer.includes(label);
+                return `
+                    <div class="option ${isCorrect ? 'correct' : 'incorrect'}">
+                        <span class="option-label">${label}</span>
+                        <span>${text}</span>
+                        ${isCorrect ? '<span style="margin-left:auto; color:#28a745;">✓ 正确答案</span>' : ''}
+                    </div>
+                `;
+            }).join('');
+
+            const memoryHtml = q.memory && (q.memory.quick_trick || q.memory.law_pattern || q.memory.calculation_trick) ? `
+                <div class="memory-box">
+                    <div class="memory-title">💡 记忆口诀</div>
+                    <div class="memory-content">
+                        ${q.memory.quick_trick ? `<div class="memory-item"><b>[口诀]</b> ${q.memory.quick_trick}</div>` : ''}
+                        ${q.memory.keyword_bind ? `<div class="memory-item"><b>[答案解释]</b> ${q.memory.keyword_bind}</div>` : ''}
+                        ${q.memory.law_pattern ? `<div class="memory-item"><b>[法规]</b> ${q.memory.law_pattern}</div>` : ''}
+                        ${q.memory.calculation_trick ? `<div class="memory-item"><b>[计算]</b> ${q.memory.calculation_trick}</div>` : ''}
+                    </div>
+                </div>
+            ` : '';
+
+            return `
+                <div class="question-card">
+                    <div class="question-header">
+                        <span class="question-number">题目 ${index} (原题号: ${q.number})</span>
+                        <div class="question-tags">
+                            ${q.knowledge_tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="question-stem">${q.stem}</div>
+                    <div class="options">${optionsHtml}</div>
+                    ${memoryHtml}
+                </div>
+            `;
+        }
+
+        function toggleGroup(idx) {
+            const group = document.getElementById(`group-${idx}`);
+            const toggle = document.getElementById(`toggle-${idx}`);
+            if (group.style.display === 'none') {
+                group.style.display = 'block';
+                toggle.textContent = '▼';
+            } else {
+                group.style.display = 'none';
+                toggle.textContent = '▶';
+            }
+        }
+
+        function filterByKnowledge(knowledge) {
+            // 切换到题目列表页
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-tab')[3].classList.add('active');
+            document.getElementById('questions-tab').classList.add('active');
+
+            // 筛选显示特定知识点的题目
+            const filtered = currentData.questions.filter(q =>
+                q.knowledge_tags.includes(knowledge)
+            );
+
+            // 临时显示筛选结果
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = `
+                <div class="knowledge-group">
+                    <div class="group-header" onclick="toggleGroup(0)">
+                        <span class="group-title">${knowledge}</span>
+                        <span class="group-count">${filtered.length}题</span>
+                        <span class="group-toggle" id="toggle-0">▼</span>
+                    </div>
+                    <div id="group-0">
+                        ${filtered.map((q, i) => renderQuestion(q, i + 1)).join('')}
+                    </div>
+                </div>
+                <div style="margin-top:15px; text-align:center;">
+                    <button class="btn" onclick="restoreAllQuestions()" style="padding:8px 20px; font-size:0.9em;">
+                        显示全部题目
+                    </button>
+                </div>
+            `;
+
+            // 更新排序按钮状态
+            isPrioritySort = false;
+            document.getElementById('sortBtn').textContent = '🎯 重点排列';
+        }
+
+        function restoreAllQuestions() {
+            isPrioritySort = false;
+            document.getElementById('sortBtn').textContent = '🎯 重点排列';
+            displayQuestions(currentData.questions, false);
+        }
+    </script>
+</body>
+</html>
