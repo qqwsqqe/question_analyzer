@@ -400,9 +400,14 @@
                 <div id="questions-tab" class="tab-content">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
                         <h3 class="section-title" style="margin:0; border:none;">题目详情</h3>
-                        <button class="btn" id="sortBtn" onclick="toggleSort()" style="margin:0; padding:10px 20px; font-size:0.9em;">
-                            🎯 重点排列
-                        </button>
+                        <div style="display:flex; gap:10px;">
+                            <button class="btn" id="analysisBtn" onclick="toggleAnalysis()" style="margin:0; padding:10px 20px; font-size:0.9em; background:#6c757d;">
+                                📖 显示解析
+                            </button>
+                            <button class="btn" id="sortBtn" onclick="toggleSort()" style="margin:0; padding:10px 20px; font-size:0.9em;">
+                                🎯 重点排列
+                            </button>
+                        </div>
                     </div>
                     <div id="questionsContainer"></div>
                 </div>
@@ -414,8 +419,12 @@
         let currentData = null;
         let selectedFiles = [];
         let isPrioritySort = false; // 默认原题号顺序
+        let showAnalysis = false; // 默认不显示解析
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
+
+        // AI解析缓存
+        const aiAnalysisCache = {};
 
         uploadArea.addEventListener('click', () => fileInput.click());
         uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
@@ -560,6 +569,103 @@
             }
         }
 
+        function toggleAnalysis() {
+            showAnalysis = !showAnalysis;
+            const btn = document.getElementById('analysisBtn');
+            btn.textContent = showAnalysis ? '📖 隐藏解析' : '📖 显示解析';
+            btn.style.background = showAnalysis ? '#28a745' : '#6c757d';
+
+            // 刷新显示以应用解析显示状态
+            if (isPrioritySort) {
+                displayQuestions(currentData.questions, true);
+            } else {
+                const sortedByNumber = [...currentData.questions].sort((a, b) => a.number - b.number);
+                displayQuestions(sortedByNumber, false);
+            }
+        }
+
+        async function analyzeWithAI(questionNumber) {
+            const btn = document.getElementById(`ai-btn-${questionNumber}`);
+            const resultDiv = document.getElementById(`ai-result-${questionNumber}`);
+
+            // 检查缓存
+            if (aiAnalysisCache[questionNumber]) {
+                resultDiv.innerHTML = aiAnalysisCache[questionNumber];
+                resultDiv.style.display = 'block';
+                btn.textContent = '🤖 隐藏AI解析';
+                btn.onclick = () => toggleAIResult(questionNumber);
+                return;
+            }
+
+            // 查找当前题目
+            const question = currentData.questions.find(q => q.number === questionNumber);
+            if (!question) return;
+
+            btn.disabled = true;
+            btn.textContent = '🤔 分析中...';
+
+            try {
+                const response = await fetch('/api/ai-analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question: question })
+                });
+
+                const data = await response.json();
+
+                if (data.error) throw new Error(data.error);
+
+                // 缓存结果
+                const html = formatAIAnalysis(data.analysis);
+                aiAnalysisCache[questionNumber] = html;
+
+                resultDiv.innerHTML = html;
+                resultDiv.style.display = 'block';
+                btn.textContent = '🤖 隐藏AI解析';
+                btn.onclick = () => toggleAIResult(questionNumber);
+
+            } catch (error) {
+                btn.textContent = '❌ 分析失败';
+                setTimeout(() => {
+                    btn.textContent = '🤖 AI解析';
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        function toggleAIResult(questionNumber) {
+            const resultDiv = document.getElementById(`ai-result-${questionNumber}`);
+            const btn = document.getElementById(`ai-btn-${questionNumber}`);
+
+            if (resultDiv.style.display === 'none') {
+                resultDiv.style.display = 'block';
+                btn.textContent = '🤖 隐藏AI解析';
+            } else {
+                resultDiv.style.display = 'none';
+                btn.textContent = '🤖 AI解析';
+                btn.onclick = () => analyzeWithAI(questionNumber);
+            }
+        }
+
+        function formatAIAnalysis(analysis) {
+            // 将AI分析文本格式化为HTML
+            return analysis.split('\n').map(line => {
+                line = line.trim();
+                if (!line) return '';
+
+                // 处理标题行
+                if (line.startsWith('【') && line.endsWith('】')) {
+                    return `<div style="font-weight:bold; color:#99CDD8; margin:10px 0 5px 0;">${line}</div>`;
+                }
+                // 处理列表项
+                if (line.startsWith('•') || line.startsWith('-')) {
+                    return `<div style="margin-left:15px; margin-bottom:3px;">${line}</div>`;
+                }
+                // 普通文本
+                return `<div style="margin-bottom:5px;">${line}</div>`;
+            }).join('');
+        }
+
         function displayQuestions(questions, groupByKnowledge) {
             const container = document.getElementById('questionsContainer');
 
@@ -628,6 +734,14 @@
                 </div>
             ` : '';
 
+            // 原始解析
+            const analysisHtml = (showAnalysis && q.analysis) ? `
+                <div class="analysis-box" style="background:#e8f4f8; border-radius:10px; padding:15px; margin-top:12px; border-left:4px solid #17a2b8;">
+                    <div style="font-weight:bold; color:#17a2b8; margin-bottom:8px;">📖 题目解析</div>
+                    <div style="color:#333; line-height:1.6;">${q.analysis}</div>
+                </div>
+            ` : '';
+
             return `
                 <div class="question-card">
                     <div class="question-header">
@@ -639,6 +753,14 @@
                     <div class="question-stem">${q.stem}</div>
                     <div class="options">${optionsHtml}</div>
                     ${memoryHtml}
+                    ${analysisHtml}
+                    <div style="margin-top:12px; display:flex; gap:10px;">
+                        <button id="ai-btn-${q.number}" class="btn" onclick="analyzeWithAI(${q.number})" style="margin:0; padding:8px 16px; font-size:0.85em; background:#6f42c1;">
+                            🤖 AI解析
+                        </button>
+                    </div>
+                    <div id="ai-result-${q.number}" style="display:none; margin-top:10px; background:#f8f9fa; border-radius:10px; padding:15px; border:1px solid #e9ecef;">
+                    </div>
                 </div>
             `;
         }

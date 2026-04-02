@@ -120,6 +120,102 @@ def generate_pdf():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/ai-analyze', methods=['POST'])
+def ai_analyze():
+    """AI 智能分析单道题目"""
+    data = request.json
+    if not data or 'question' not in data:
+        return jsonify({'error': '没有题目数据'}), 400
+
+    try:
+        question = data['question']
+        analysis = generate_ai_analysis(question)
+        return jsonify({'analysis': analysis})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def generate_ai_analysis(question):
+    """生成 AI 风格的易懂解析"""
+    stem = question.get('stem', '')
+    options = question.get('options', {})
+    answer = question.get('answer', '')
+    analysis = question.get('analysis', '')
+    knowledge_tags = question.get('knowledge_tags', [])
+
+    result = []
+
+    # 题目类型判断
+    if len(options) <= 2 or '正确' in stem or '错误' in stem:
+        q_type = '判断题'
+    elif '以下' in stem and ('包括' in stem or '包含' in stem):
+        q_type = '多选题'
+    else:
+        q_type = '单选题'
+
+    result.append(f'【题目类型】{q_type}')
+    result.append('')
+
+    # 核心考点
+    if knowledge_tags:
+        result.append(f'【核心考点】{"、".join(knowledge_tags[:3])}')
+        result.append('')
+
+    # 题干理解
+    result.append('【题干理解】')
+    # 简化题干，提取关键信息
+    simple_stem = stem
+    if len(simple_stem) > 50:
+        # 提取关键部分
+        if '。' in simple_stem:
+            sentences = simple_stem.split('。')
+            simple_stem = sentences[-2] + '。' + sentences[-1] if len(sentences) > 1 else sentences[-1]
+    result.append(f'这道题在问：{simple_stem[:100]}...')
+    result.append('')
+
+    # 选项分析
+    if options:
+        result.append('【选项分析】')
+        for label, text in options.items():
+            is_answer = label == answer or (answer and label in answer)
+            marker = '✓ 正确答案' if is_answer else '  干扰项'
+            result.append(f'{label}. {text} {marker}')
+        result.append('')
+
+    # 答案理由
+    result.append('【为什么选这个答案】')
+    if analysis:
+        # 简化原有解析
+        simple_analysis = analysis.replace('。', '\n').strip()
+        result.append(simple_analysis[:200])
+    else:
+        # 生成简单的解释
+        if '年' in stem:
+            result.append('这道题的答案与法规规定的年限有关，记住相关规定即可。')
+        elif '处罚' in stem or '罚款' in stem:
+            result.append('这道题涉及处罚规定，需要根据违规程度判断处罚类型。')
+        elif '应当' in stem or '必须' in stem:
+            result.append('这道题考查法定义务，"应当"通常表示强制性要求。')
+        else:
+            result.append(f'正确答案是 {answer}。建议在理解的基础上记忆这个知识点。')
+    result.append('')
+
+    # 记忆技巧
+    result.append('【记忆小技巧】')
+    if '5年' in stem or '五年' in stem:
+        result.append('💡 口诀："个人处罚五" - 个人从业资格处罚通常是5年')
+    elif '10年' in stem or '十年' in stem:
+        result.append('💡 口诀："犯罪十年禁" - 刑事犯罪或严重欺诈是10年禁入')
+    elif '终身' in stem or '终生' in stem:
+        result.append('💡 口诀："特别终身禁" - 情节特别严重才会终身禁入')
+    elif answer:
+        result.append(f'💡 可以联想记忆：答案 {answer} 对应的关键词在题干中可能有暗示')
+    else:
+        result.append('💡 建议结合实际案例理解记忆')
+
+    return '\n'.join(result)
+
+
 def process_files(filepaths):
     """处理多个文件，合并分析"""
     all_questions = []
@@ -169,6 +265,7 @@ def process_files(filepaths):
             'stem': q.stem,
             'options': q.options,
             'answer': q.answer,
+            'analysis': q.analysis,
             'knowledge_tags': q.knowledge_tags,
             'memory': memory
         })
