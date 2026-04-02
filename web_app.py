@@ -136,78 +136,87 @@ def ai_analyze():
 
 
 def generate_ai_analysis(question):
-    """生成简洁有趣的AI解析，一两句话说清楚"""
+    """生成专业简洁的AI解析，一两句话点明本质"""
     stem = question.get('stem', '')
-    options = question.get('options', {})
     answer = question.get('answer', '')
     analysis = question.get('analysis', '')
     knowledge_tags = question.get('knowledge_tags', [])
 
     # 判断题目类型和特征
-    is_calculation = any(word in stem for word in ['计算', '等于', '为', '%', '比例', '收益率', '价格'])
-    is_year_question = any(word in stem for word in ['年', '月', '日', '期限', '时间'])
-    is_definition = any(word in stem for word in ['是指', '定义', '概念', '含义', '所谓'])
+    is_calculation = any(word in stem for word in ['计算', '等于', '为', '%', '比例', '收益率', '价格', '现值', '终值'])
+    is_year_question = any(word in stem for word in ['年', '月', '日', '期限'])
+    is_definition = any(word in stem for word in ['是指', '定义', '概念', '含义'])
     is_regulation = any(word in stem for word in ['规定', '要求', '应当', '必须', '禁止', '不得'])
+    is_penalty = any(word in stem for word in ['处罚', '罚款', '警告', '撤销', '吊销'])
 
     result = []
 
-    # 计算题：给出计算过程
-    if is_calculation and any(word in stem for word in ['收益率', '利率', '回报']):
-        result.append(f'💡 计算题：收益率 = 收益 / 本金 × 100%。记住这个公式就行。')
-        result.append(f'答案 {answer}。')
-    elif is_calculation and '价格' in stem:
-        result.append(f'💡 价格计算题：通常涉及供需关系或贴现计算。')
-        result.append(f'这题选 {answer}，具体看题干给的数据套公式。')
+    # 计算题：给出核心公式和逻辑
+    if is_calculation:
+        if any(word in stem for word in ['收益率', '利率', '回报', '收益']):
+            result.append('收益率 = 收益 / 本金。这是金融学最基础的收益计算逻辑，记住分子分母关系即可。')
+        elif any(word in stem for word in ['现值', '终值', '贴现']):
+            result.append('货币时间价值原理：今天的1元 > 明天的1元。现值计算本质是未来现金流按利率折现。')
+        elif any(word in stem for word in ['价格', '估值', '价值']):
+            result.append('资产价格 = 未来现金流现值之和。这是估值的核心逻辑，选 %s。' % answer)
+        else:
+            result.append('计算题关键是识别已知条件和所求变量，套用对应公式即可。答案 %s。' % answer)
 
-    # 年限类：口诀记忆
-    elif is_year_question and ('5年' in stem or '五年' in stem):
-        result.append(f'💡 类比：就像大学毕业后再读个博士，5年时间让你彻底长记性。')
-        result.append(f'个人违规处罚一般5年禁入，选 {answer}。')
-    elif is_year_question and ('10年' in stem or '十年' in stem):
-        result.append(f'💡 类比：刑事犯罪 = 严重失信，相当于金融界的"有期徒刑"，10年起步。')
-        result.append(f'选 {answer}。')
-    elif is_year_question and ('终身' in stem or '终生' in stem):
-        result.append(f'💡 类比：就像被拉入航空公司黑名单，这辈子别想再飞了。')
-        result.append(f'特别严重就是终身禁入，选 {answer}。')
+    # 年限类：监管逻辑解释
+    elif is_year_question:
+        if '5年' in stem or '五年' in stem:
+            result.append('5年是行政处罚的基准刑期，类似于刑法中的"量刑起点"，适用于一般性违规。')
+        elif '10年' in stem or '十年' in stem:
+            result.append('10年对应严重失信行为，与刑事犯罪相衔接，体现"过罚相当"的监管原则。')
+        elif '终身' in stem or '终生' in stem:
+            result.append('终身禁入是行业清退机制，适用于情节特别严重、不再适合从事证券业务的情形。')
+        else:
+            result.append('监管期限设置遵循过罚相当原则，违规严重程度与时间长度成正比。')
 
-    # 基本概念类：幽默处理
-    elif is_definition:
-        jokes = [
-            f'🤷 没解释，背吧。这就像问"为什么1+1=2"，定义就是定义。',
-            f'📚 基础概念，建议直接背下来。考试不会问"为什么"，只问"是什么"。',
-            f'😅 这种题就是考记忆力，理解不了就先记住，选 {answer}。'
-        ]
-        import random
-        result.append(random.choice(jokes))
+    # 处罚类：区分处罚层级
+    elif is_penalty:
+        if '罚款' in stem:
+            result.append('罚款属于财产罚，与警告（申诫罚）、资格罚（禁入）形成阶梯式处罚体系。')
+        elif '警告' in stem:
+            result.append('警告是最轻的监管措施，属于申诫罚，通常作为前置程序或轻微违规的处理。')
+        elif '撤销' in stem or '吊销' in stem:
+            result.append('资格罚是最严厉的措施之一，直接剥夺从业资格，适用于重大违规或失信行为。')
+        else:
+            result.append('行政处罚遵循从轻则原则，根据违规性质、情节、后果综合判定。')
 
-    # 法规规定类
+    # 法规规定类：法律术语解释
     elif is_regulation:
         if '应当' in stem:
-            result.append(f'💡 "应当" = 必须做，不做就违法。这就像红绿灯，红灯应当停。')
+            result.append('"应当"在法律语境中等同于"必须"，是强制性规范，违反即构成违规。')
         elif '禁止' in stem or '不得' in stem:
-            result.append(f'💡 禁止就是红线，碰了就要受罚。选 {answer}。')
+            result.append('禁止性规范设定行为红线，属于效力性强制规定，触碰即产生法律责任。')
+        elif '可以' in stem:
+            result.append('"可以"是授权性规范，赋予主体选择权，做或不做均在允许范围内。')
         else:
-            result.append(f'💡 法规题没有太多道理可讲，记住"是什么"就行。选 {answer}。')
+            result.append('法律规范的逻辑结构：假定条件 + 行为模式 + 法律后果。理解这个框架即可解题。')
+
+    # 基本概念类：核心定义
+    elif is_definition:
+        result.append('概念题考查对特定术语的准确理解。这类题目没有推理空间，准确记忆定义原文即可。')
 
     # 其他情况：提取原解析的核心
-    elif analysis:
-        # 提取原解析的关键信息，简化成一两句
-        clean_analysis = analysis.replace('。', ' ').replace('\n', ' ').strip()
-        if len(clean_analysis) > 100:
-            clean_analysis = clean_analysis[:100] + '...'
-        result.append(f'💡 {clean_analysis}')
-        result.append(f'简单说就是选 {answer}。')
+    elif analysis and len(analysis) > 10:
+        # 尝试提取关键逻辑
+        clean_analysis = analysis.replace('\n', ' ').strip()
+        # 取前两句话
+        sentences = clean_analysis.split('。')
+        if len(sentences) >= 2:
+            summary = sentences[0] + '。' + sentences[1] + '。'
+        else:
+            summary = clean_analysis[:150]
+        if len(summary) > 150:
+            summary = summary[:150] + '...'
+        result.append(summary)
 
-    # 完全不知道说什么
+    # 兜底
     else:
-        funny_responses = [
-            f'🤷 这题我也没啥好解释的，选 {answer} 就对了。',
-            f'📚 记住它，考试用得上。答案是 {answer}。',
-            f'😎 有时候生活不需要解释，就像这题，选 {answer} 就行。',
-            f'💡 这个知识点就像你爸妈的电话号码，记住比理解更重要。答案是 {answer}。'
-        ]
-        import random
-        result.append(random.choice(funny_responses))
+        tags_str = '、'.join(knowledge_tags[:2]) if knowledge_tags else '相关法规或概念'
+        result.append('题目涉及%s，答案为 %s。建议结合监管实践理解记忆。' % (tags_str, answer))
 
     return '\n'.join(result)
 
