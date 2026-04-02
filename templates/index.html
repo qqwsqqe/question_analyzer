@@ -648,22 +648,8 @@
         }
 
         function formatAIAnalysis(analysis) {
-            // 将AI分析文本格式化为HTML
-            return analysis.split('\n').map(line => {
-                line = line.trim();
-                if (!line) return '';
-
-                // 处理标题行
-                if (line.startsWith('【') && line.endsWith('】')) {
-                    return `<div style="font-weight:bold; color:#99CDD8; margin:10px 0 5px 0;">${line}</div>`;
-                }
-                // 处理列表项
-                if (line.startsWith('•') || line.startsWith('-')) {
-                    return `<div style="margin-left:15px; margin-bottom:3px;">${line}</div>`;
-                }
-                // 普通文本
-                return `<div style="margin-bottom:5px;">${line}</div>`;
-            }).join('');
+            // AI解析简单显示，去掉多余格式
+            return `<div style="color:#333; line-height:1.8; font-size:0.95em;">${analysis.replace(/\n/g, '<br>')}</div>`;
         }
 
         function displayQuestions(questions, groupByKnowledge) {
@@ -734,11 +720,11 @@
                 </div>
             ` : '';
 
-            // 原始解析
+            // 原始解析 - 完整显示
             const analysisHtml = (showAnalysis && q.analysis) ? `
                 <div class="analysis-box" style="background:#e8f4f8; border-radius:10px; padding:15px; margin-top:12px; border-left:4px solid #17a2b8;">
                     <div style="font-weight:bold; color:#17a2b8; margin-bottom:8px;">📖 题目解析</div>
-                    <div style="color:#333; line-height:1.6;">${q.analysis}</div>
+                    <div style="color:#333; line-height:1.8; white-space:pre-wrap; word-wrap:break-word;">${q.analysis.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
                 </div>
             ` : '';
 
